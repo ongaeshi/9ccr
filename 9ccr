@@ -1,0 +1,14 @@
+#! /usr/bin/env ruby
+
+if ARGV.length != 1
+  STDERR.puts("引数の個数が正しくありません")
+  exit(1)
+end
+
+puts <<-EOS
+.intel_syntax noprefix
+.globl main
+main:
+  mov rax, #{ARGV[0]}
+  ret
+EOS
