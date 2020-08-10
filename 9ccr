@@ -1,14 +1,45 @@
 #! /usr/bin/env ruby
+require "stringio"
 
 if ARGV.length != 1
   STDERR.puts("引数の個数が正しくありません")
   exit(1)
 end
 
+def strtol(s)
+  num = nil
+  s.sub!(/\d+/) do |e|
+    num = e
+    ""
+  end
+
+  num.to_i
+end
+
+p = +ARGV[0]
+
 puts <<-EOS
 .intel_syntax noprefix
 .globl main
 main:
-  mov rax, #{ARGV[0]}
-  ret
+  mov rax, #{strtol(p)}
 EOS
+
+while p.length > 0 do
+  if p[0] == "+"
+    p = p[1..-1]
+    puts "  add rax, #{strtol(p)}"
+    next
+  end
+
+  if p[0] == "-"
+    p = p[1..-1]
+    puts "  sub rax, #{strtol(p)}"
+    next
+  end
+
+  STDERR.puts("予期しない文字です: #{p[0]}")
+  exit(1)
+end
+
+puts "ret"
