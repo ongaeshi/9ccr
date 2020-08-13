@@ -1,45 +1,104 @@
 #! /usr/bin/env ruby
-require "stringio"
+
+require 'strscan'
+
+TK_RESERVED = 0
+TK_NUM = 1
+TK_EOF = 2
+
+Token = Struct.new(:kind, :next, :val, :str)
+
+@token = nil
+
+def error(msg)
+  STDERR.puts(msg)
+  exit(1)
+end
+
+def consume(op)
+  if @token.kind != TK_RESERVED || @token.str[0] != op
+    return false
+  end
+  @token = @token.next
+  true
+end
+
+def expect(op)
+  if @token.kind != TK_RESERVED || @token.str[0] != op
+    error("'#{op}''ではありません")
+  end
+  @token = @token.next
+end
+
+def expect_number
+  error("数ではありません") if @token.kind != TK_NUM
+  val = @token.val
+  @token = @token.next
+  val
+end
+
+def at_eof
+  @token.kind == TK_EOF
+end
+
+def new_token(kind, cur, str)
+  tok = Token.new
+  tok.kind = kind
+  tok.str = str
+  cur.next = tok
+  tok
+end
+
+def tokenize(str)
+  s = StringScanner.new(str)
+
+  head = Token.new
+  head.next = nil
+  cur = head
+
+  until s.eos? do
+    next if s.scan(/\s+/)
+
+    if s.scan(/\+|\-/)
+      cur = new_token(TK_RESERVED, cur, s[0])
+      next
+    end
+
+    if s.scan(/[0-9]+/)
+       cur = new_token(TK_NUM, cur, s[0])
+       cur.val = s[0].to_i
+       next
+    end
+
+    error("トークナイズできません")
+  end
+
+  new_token(TK_EOF, cur, "")
+  head.next
+end
 
 if ARGV.length != 1
   STDERR.puts("引数の個数が正しくありません")
   exit(1)
 end
 
-def strtol(s)
-  num = nil
-  s.sub!(/\d+/) do |e|
-    num = e
-    ""
-  end
-
-  num.to_i
-end
-
-p = +ARGV[0]
+@token = tokenize(ARGV[0])
 
 puts <<-EOS
 .intel_syntax noprefix
 .globl main
 main:
-  mov rax, #{strtol(p)}
+  mov rax, #{expect_number}
 EOS
 
-while p.length > 0 do
-  if p[0] == "+"
-    p = p[1..-1]
-    puts "  add rax, #{strtol(p)}"
+until at_eof
+  if consume("+")
+    puts("  add rax, #{expect_number}")
     next
   end
 
-  if p[0] == "-"
-    p = p[1..-1]
-    puts "  sub rax, #{strtol(p)}"
-    next
-  end
-
-  STDERR.puts("予期しない文字です: #{p[0]}")
-  exit(1)
+  expect("-")
+  puts("  sub rax, #{expect_number}")
 end
 
-puts "ret"
+puts("  ret")
