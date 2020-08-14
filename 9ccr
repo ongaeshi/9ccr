@@ -11,6 +11,11 @@ Token = Struct.new(:kind, :next, :val, :str, :pos)
 @user_input = nil
 @token = nil
 
+def error(msg)
+  STDERR.puts msg
+  exit(1)
+end
+
 def error_at(msg, pos)
   STDERR.puts @user_input
   STDERR.puts " " * pos + "^ " 
@@ -28,13 +33,13 @@ end
 
 def expect(op)
   if @token.kind != TK_RESERVED || @token.str[0] != op
-    error_at("'#{op}''ではありません", @token.pos)
+    error_at("expected '#{op}'", @token.pos)
   end
   @token = @token.next
 end
 
 def expect_number
-  error_at("数ではありません", @token.pos) if @token.kind != TK_NUM
+  error_at("expected a number", @token.pos) if @token.kind != TK_NUM
   val = @token.val
   @token = @token.next
   val
@@ -74,7 +79,7 @@ def tokenize(str)
        next
     end
 
-    error_at("トークナイズできません", s.pos)
+    error_at("invalid token", s.pos)
   end
 
   new_token(TK_EOF, cur, "", s.pos)
@@ -82,8 +87,7 @@ def tokenize(str)
 end
 
 if ARGV.length != 1
-  STDERR.puts("引数の個数が正しくありません")
-  exit(1)
+  error("#{ARGV.length}: invalid number of arguments")
 end
 
 @user_input = ARGV[0]
