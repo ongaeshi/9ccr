@@ -1,21 +1,29 @@
 #! /usr/bin/env ruby
-
 require 'strscan'
 
+#
+# Tokenizer
+#
 TK_RESERVED = 0
 TK_NUM = 1
 TK_EOF = 2
 
+# Token type
 Token = Struct.new(:kind, :next, :val, :str, :pos)
 
+# Input program
 @user_input = nil
+
+# Current token
 @token = nil
 
+# Reports an error and exit.
 def error(msg)
   STDERR.puts msg
   exit(1)
 end
 
+# Reports an error location and exit.
 def error_at(msg, pos)
   STDERR.puts @user_input
   STDERR.puts " " * pos + "^ " 
@@ -23,6 +31,7 @@ def error_at(msg, pos)
   exit(1)
 end
 
+# Consumes the current token if it matches `op`.
 def consume(op)
   if @token.kind != TK_RESERVED || @token.str[0] != op
     return false
@@ -31,6 +40,7 @@ def consume(op)
   true
 end
 
+# Ensure that the current token is `op`.
 def expect(op)
   if @token.kind != TK_RESERVED || @token.str[0] != op
     error_at("expected '#{op}'", @token.pos)
@@ -38,6 +48,7 @@ def expect(op)
   @token = @token.next
 end
 
+# Ensure that the current token is TK_NUM.
 def expect_number
   error_at("expected a number", @token.pos) if @token.kind != TK_NUM
   val = @token.val
@@ -49,6 +60,7 @@ def at_eof
   @token.kind == TK_EOF
 end
 
+# Create a new token and add it as the next token of `cur`.
 def new_token(kind, cur, str, pos)
   tok = Token.new
   tok.kind = kind
@@ -58,21 +70,24 @@ def new_token(kind, cur, str, pos)
   tok
 end
 
-def tokenize(str)
-  s = StringScanner.new(str)
-
+# Tokenize `user_input` and returns new tokens.
+def tokenize
+  s = StringScanner.new(@user_input)
   head = Token.new
   head.next = nil
   cur = head
 
   until s.eos? do
+    # Skip whitespace characters.
     next if s.scan(/\s+/)
 
+    # Punctuator
     if s.scan(/\+|\-/)
       cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)
       next
     end
 
+    # Integer literal
     if s.scan(/[0-9]+/)
        cur = new_token(TK_NUM, cur, s[0], s.pos - s.matched_size)
        cur.val = s[0].to_i
@@ -90,8 +105,11 @@ if ARGV.length != 1
   error("#{ARGV.length}: invalid number of arguments")
 end
 
+#
+# main
+# 
 @user_input = ARGV[0]
-@token = tokenize(@user_input)
+@token = tokenize
 
 puts <<-EOS
 .intel_syntax noprefix
