@@ -82,7 +82,7 @@ def tokenize
     next if s.scan(/\s+/)
 
     # Punctuator
-    if s.scan(/\+|\-/)
+    if s.scan(/[\+\-\*\/\(\)]/)
       cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)
       next
     end
@@ -101,31 +101,136 @@ def tokenize
   head.next
 end
 
-if ARGV.length != 1
-  error("#{ARGV.length}: invalid number of arguments")
+#
+# Parser
+#
+
+ND_ADD = 0 # +
+ND_SUB = 1 # -
+ND_MUL = 2 # *
+ND_DIV = 3 # /
+ND_NUM = 4 # Integer
+
+# AST node type
+Node = Struct.new(
+  :kind,   # Node kind
+  :lhs,    # Left-hand side
+  :rhs,    # Right-hand side
+  :val,    # Used if kind == ND_NUM
+)
+
+def new_node(kind)
+  node = Node.new
+  node.kind = kind
+  node
+end
+
+def new_binary(kind, lhs, rhs)
+  node = new_node(kind)
+  node.lhs = lhs
+  node.rhs = rhs
+  node
+end
+
+def new_num(val)
+  node = new_node(ND_NUM)
+  node.val = val
+  node
+end
+
+# expr = mul ("+" mul | "-" mul)*
+def expr
+  node = mul()
+
+  loop do
+    if consume("+")
+      node = new_binary(ND_ADD, node, mul())
+    elsif consume("-")
+      node = new_binary(ND_SUB, node, mul())
+    else
+      return node
+    end
+  end
+end
+
+# mul = primary ("*" primary | "/" primary)*
+def mul
+  node = primary()
+
+  loop do
+    if consume("*")
+      node = new_binary(ND_MUL, node, primary())
+    elsif consume("/")
+      node = new_binary(ND_DIV, node, primary())
+    else
+      return node
+    end
+  end
+end
+
+# primary = "(" expr ")" | num
+def primary
+  if consume("(")
+    node = expr()
+    expect(")")
+    return node
+  end
+
+  new_num(expect_number())
+end
+
+#
+# Code generator
+#
+
+def gen(node)
+  if node.kind == ND_NUM
+    puts("  push #{node.val}")
+    return
+  end
+
+  gen(node.lhs)
+  gen(node.rhs)
+  
+  puts("  pop rdi")
+  puts("  pop rax")
+
+  case node.kind
+  when ND_ADD
+    puts("  add rax, rdi")
+  when ND_SUB
+    puts("  sub rax, rdi")
+  when ND_MUL
+    puts("  imul rax, rdi")
+  when ND_DIV
+    puts("  cqo")
+    puts("  idiv rdi")
+  end
+
+  puts("  push rax")
 end
 
 #
 # main
 # 
-@user_input = ARGV[0]
-@token = tokenize
-
-puts <<-EOS
-.intel_syntax noprefix
-.globl main
-main:
-  mov rax, #{expect_number}
-EOS
-
-until at_eof
-  if consume("+")
-    puts("  add rax, #{expect_number}")
-    next
-  end
-
-  expect("-")
-  puts("  sub rax, #{expect_number}")
+if ARGV.length != 1
+  error("#{ARGV.length}: invalid number of arguments")
 end
 
-puts("  ret")
+# Tokenize and parse.
+@user_input = ARGV[0]
+@token = tokenize()
+node = expr()
+
+# Print out the first half of assembly.
+puts(".intel_syntax noprefix")
+puts(".globl main")
+puts "main:"
+
+# Traverse the AST to emit assembly.
+gen(node)
+
+# A result must be at the top of the stack, so pop it
+# to RAX to make it a program exit code.
+puts("  pop rax");
+puts("  ret");
