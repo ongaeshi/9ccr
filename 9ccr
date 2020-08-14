@@ -153,18 +153,30 @@ def expr
   end
 end
 
-# mul = primary ("*" primary | "/" primary)*
+# mul = unary ("*" unary | "/" unary)*
 def mul
-  node = primary()
+  node = unary()
 
   loop do
     if consume("*")
-      node = new_binary(ND_MUL, node, primary())
+      node = new_binary(ND_MUL, node, unary())
     elsif consume("/")
-      node = new_binary(ND_DIV, node, primary())
+      node = new_binary(ND_DIV, node, unary())
     else
       return node
     end
+  end
+end
+
+# unary = ("+" | "-")? unary
+#       | primary
+def unary
+  if consume("+")
+    unary()
+  elsif consume("-")
+    new_binary(ND_SUB, new_num(0), unary())
+  else
+    primary()
   end
 end
 
