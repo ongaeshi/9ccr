@@ -52,10 +52,12 @@ def codegen(node)
   puts "main:"
 
   # Traverse the AST to emit assembly.
-  gen(node)
+  n = node
+  while n do
+    gen(n)
+    puts("  pop rax")
+    n = n.next
+  end
 
-  # A result must be at the top of the stack, so pop it
-  # to RAX to make it a program exit code.
-  puts("  pop rax");
   puts("  ret");
 end

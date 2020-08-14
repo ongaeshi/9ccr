@@ -15,6 +15,7 @@ ND_NUM = 8 # Integer
 # AST node type
 Node = Struct.new(
   :kind,   # Node kind
+  :next,   # Next node
   :lhs,    # Left-hand side
   :rhs,    # Right-hand side
   :val,    # Used if kind == ND_NUM
@@ -36,6 +37,26 @@ end
 def new_num(val)
   node = new_node(ND_NUM)
   node.val = val
+  node
+end
+
+# program = stmt*
+def program
+  head = Node.new
+  cur = head
+
+  until at_eof do
+    cur.next = stmt()
+    cur = cur.next
+  end
+
+  head.next
+end
+
+# stmt = expr ";"
+def stmt
+  node = expr()
+  expect(";")
   node
 end
 

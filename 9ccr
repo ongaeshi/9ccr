@@ -11,7 +11,7 @@ end
 # Tokenize and parse.
 $user_input = ARGV[0]
 $token = tokenize()
-node = expr()
+node = program()
 
 # Traverse the AST to emit assembly.
 codegen(node)
