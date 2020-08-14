@@ -90,6 +90,12 @@ def tokenize
     # Skip whitespace characters.
     next if s.scan(/\s+/)
 
+    # Keywords
+    if s.scan(/return\b/)
+      cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)
+      next
+    end
+
     # Multi-letter punctuator
     if s.scan(/(==)|(!=)|(<=)|(>=)/)
       cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)

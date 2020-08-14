@@ -3,8 +3,14 @@
 #
 
 def gen(node)
-  if node.kind == ND_NUM
+  case node.kind
+  when ND_NUM
     puts("  push #{node.val}")
+    return
+  when ND_RETURN
+    gen(node.lhs)
+    puts("  pop rax")
+    puts("  ret")
     return
   end
 

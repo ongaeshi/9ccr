@@ -2,15 +2,16 @@
 # parse.rb
 #
 
-ND_ADD = 0 # +
-ND_SUB = 1 # -
-ND_MUL = 2 # *
-ND_DIV = 3 # /
-ND_EQ  = 4 # ==
-ND_NE  = 5 # !=
-ND_LT  = 6 # <
-ND_LE  = 7 # <=
-ND_NUM = 8 # Integer
+ND_ADD    = 0 # +
+ND_SUB    = 1 # -
+ND_MUL    = 2 # *
+ND_DIV    = 3 # /
+ND_EQ     = 4 # ==
+ND_NE     = 5 # !=
+ND_LT     = 6 # <
+ND_LE     = 7 # <=
+ND_RETURN = 8 # "return"
+ND_NUM    = 9 # Integer
 
 # AST node type
 Node = Struct.new(
@@ -34,6 +35,12 @@ def new_binary(kind, lhs, rhs)
   node
 end
 
+def new_unary(kind, expr)
+  node = new_node(kind)
+  node.lhs = expr
+  node
+end
+
 def new_num(val)
   node = new_node(ND_NUM)
   node.val = val
@@ -53,8 +60,15 @@ def program
   head.next
 end
 
-# stmt = expr ";"
+# stmt = "return" expr ";"
+#      | expr ";"
 def stmt
+  if consume("return")
+    node = new_unary(ND_RETURN, expr())
+    expect(";")
+    return node
+  end
+
   node = expr()
   expect(";")
   node
