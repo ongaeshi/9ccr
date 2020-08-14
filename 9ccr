@@ -9,8 +9,8 @@ if ARGV.length != 1
 end
 
 # Tokenize and parse.
-@user_input = ARGV[0]
-@token = tokenize()
+$user_input = ARGV[0]
+$token = tokenize()
 node = expr()
 
 # Traverse the AST to emit assembly.

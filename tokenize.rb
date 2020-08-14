@@ -16,10 +16,10 @@ Token = Struct.new(
 )
 
 # Input program
-@user_input = nil
+$user_input = nil
 
 # Current token
-@token = nil
+$token = nil
 
 # Reports an error and exit.
 def error(msg)
@@ -29,7 +29,7 @@ end
 
 # Reports an error location and exit.
 def error_at(msg, pos)
-  STDERR.puts @user_input
+  STDERR.puts $user_input
   STDERR.puts " " * pos + "^ " 
   STDERR.puts msg
   exit(1)
@@ -37,31 +37,31 @@ end
 
 # Consumes the current token if it matches `op`.
 def consume(op)
-  if @token.kind != TK_RESERVED || @token.str != op
+  if $token.kind != TK_RESERVED || $token.str != op
     return false
   end
-  @token = @token.next
+  $token = $token.next
   true
 end
 
 # Ensure that the current token is `op`.
 def expect(op)
-  if @token.kind != TK_RESERVED || @token.str != op
-    error_at("expected '#{op}'", @token.pos)
+  if $token.kind != TK_RESERVED || $token.str != op
+    error_at("expected '#{op}'", $token.pos)
   end
-  @token = @token.next
+  $token = $token.next
 end
 
 # Ensure that the current token is TK_NUM.
 def expect_number
-  error_at("expected a number", @token.pos) if @token.kind != TK_NUM
-  val = @token.val
-  @token = @token.next
+  error_at("expected a number", $token.pos) if $token.kind != TK_NUM
+  val = $token.val
+  $token = $token.next
   val
 end
 
 def at_eof
-  @token.kind == TK_EOF
+  $token.kind == TK_EOF
 end
 
 # Create a new token and add it as the next token of `cur`.
@@ -80,7 +80,7 @@ end
 
 # Tokenize `user_input` and returns new tokens.
 def tokenize
-  s = StringScanner.new(@user_input)
+  s = StringScanner.new($user_input)
   head = Token.new
   head.str = ""
   head.next = nil
