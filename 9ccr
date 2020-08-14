@@ -9,7 +9,13 @@ TK_NUM = 1
 TK_EOF = 2
 
 # Token type
-Token = Struct.new(:kind, :next, :val, :str, :pos)
+Token = Struct.new(
+  :kind, # Token kind
+  :next, # Next token
+  :val,  # If kind is TK_NUM, its value
+  :str,  # Token string
+  :pos   # Token position in user_input
+)
 
 # Input program
 @user_input = nil
@@ -33,7 +39,7 @@ end
 
 # Consumes the current token if it matches `op`.
 def consume(op)
-  if @token.kind != TK_RESERVED || @token.str[0] != op
+  if @token.kind != TK_RESERVED || @token.str != op
     return false
   end
   @token = @token.next
@@ -42,7 +48,7 @@ end
 
 # Ensure that the current token is `op`.
 def expect(op)
-  if @token.kind != TK_RESERVED || @token.str[0] != op
+  if @token.kind != TK_RESERVED || @token.str != op
     error_at("expected '#{op}'", @token.pos)
   end
   @token = @token.next
@@ -70,10 +76,15 @@ def new_token(kind, cur, str, pos)
   tok
 end
 
+def startswith(p, q)
+  p.include?(q)
+end
+
 # Tokenize `user_input` and returns new tokens.
 def tokenize
   s = StringScanner.new(@user_input)
   head = Token.new
+  head.str = ""
   head.next = nil
   cur = head
 
@@ -81,8 +92,14 @@ def tokenize
     # Skip whitespace characters.
     next if s.scan(/\s+/)
 
-    # Punctuator
-    if s.scan(/[\+\-\*\/\(\)]/)
+    # Multi-letter punctuator
+    if s.scan(/(==)|(!=)|(<=)|(>=)/)
+      cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)
+      next
+    end
+
+    # Single-letter punctuator
+    if s.scan(/[\+\-\*\/\(\)<>]/)
       cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)
       next
     end
@@ -98,6 +115,13 @@ def tokenize
   end
 
   new_token(TK_EOF, cur, "", s.pos)
+
+  # cur = head.next
+  # while cur do
+  #   p "#{cur.kind}: #{cur.str}"
+  #   cur = cur.next
+  # end
+
   head.next
 end
 
@@ -109,7 +133,11 @@ ND_ADD = 0 # +
 ND_SUB = 1 # -
 ND_MUL = 2 # *
 ND_DIV = 3 # /
-ND_NUM = 4 # Integer
+ND_EQ  = 4 # ==
+ND_NE  = 5 # !=
+ND_LT  = 6 # <
+ND_LE  = 7 # <=
+ND_NUM = 8 # Integer
 
 # AST node type
 Node = Struct.new(
@@ -138,8 +166,47 @@ def new_num(val)
   node
 end
 
-# expr = mul ("+" mul | "-" mul)*
+# expr = equality
 def expr
+  equality()
+end
+
+# equality = relational ("==" relational | "!=" relational)*
+def equality
+  node = relational()
+
+  loop do
+    if consume("==")
+      node = new_binary(ND_EQ, node, relational())
+    elsif consume("!=")
+      node = new_binary(ND_NE, node, relational())
+    else
+      return node
+    end
+  end
+end
+
+# relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+def relational
+  node = add()
+
+  loop do
+    if consume("<")
+      node = new_binary(ND_LT, node, add())
+    elsif consume("<=")
+      node = new_binary(ND_LE, node, add())
+    elsif consume(">")
+      node = new_binary(ND_LT, add(), node)
+    elsif consume(">=")
+      node = new_binary(ND_LE ,add(), node)
+    else
+      return node
+    end
+  end
+end
+
+# add = mul ("+" mul | "-" mul)*
+def add
   node = mul()
 
   loop do
@@ -217,6 +284,22 @@ def gen(node)
   when ND_DIV
     puts("  cqo")
     puts("  idiv rdi")
+  when ND_EQ
+    printf("  cmp rax, rdi\n")
+    printf("  sete al\n")
+    printf("  movzb rax, al\n")
+  when ND_NE
+    printf("  cmp rax, rdi\n")
+    printf("  setne al\n")
+    printf("  movzb rax, al\n")
+  when ND_LT
+    printf("  cmp rax, rdi\n")
+    printf("  setl al\n")
+    printf("  movzb rax, al\n")
+  when ND_LE
+    printf("  cmp rax, rdi\n")
+    printf("  setle al\n")
+    printf("  movzb rax, al\n")
   end
 
   puts("  push rax")
