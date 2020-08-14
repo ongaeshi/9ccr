@@ -97,7 +97,7 @@ def tokenize
     end
 
     # Single-letter punctuator
-    if s.scan(/[\+\-\*\/\(\)<>]/)
+    if s.scan(/[[:punct:]]/)
       cur = new_token(TK_RESERVED, cur, s[0], s.pos - s.matched_size)
       next
     end
